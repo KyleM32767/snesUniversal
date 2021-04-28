@@ -60,7 +60,7 @@ Joystick_ gamepad(JOYSTICK_DEFAULT_REPORT_ID,JOYSTICK_TYPE_GAMEPAD,
 #define CONFIG_FILE_PATH "snesControls.txt"
 
 // the config file
-File config;
+File configFile;
 
 
 /* =============================================================================
@@ -79,10 +79,22 @@ LiquidCrystal_I2C lcd(0x27, LCD_COLS, LCD_ROWS); // what is 0x27 supposed to be
 		METHODS AND SUCH
    ============================================================================= */ 
 
+/*
+ * Initializes all peripherals and USB stuff
+ */
+void initHardware() {
+	SD.begin(SPI_SS);						// SD card
+	configFile = SD.open(CONFIG_FILE_PATH);
+	snes.initialize();						// SNES controller
+//	gamepad.begin();						// USB gamepad
+	Keyboard.begin();						// keyboard
+	lcd.init();								// LCD display
+	lcd.backlight();
+}
 
 void setup() {
 	Serial.begin(9600);
-	SD.begin(SPI_SS);
+	initHardware();
 }
 
 void loop() {
