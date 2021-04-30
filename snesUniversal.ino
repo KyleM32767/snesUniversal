@@ -22,9 +22,9 @@
 
 #include <SPI.h>
 #include <SD.h>
-//#include <Keyboard.h>
+#include <Keyboard.h>
 //#include "LiquidCrystal_I2C.h"
-//#include "SNES.h"
+#include "SNES.h"
 //#include "Joystick.h"
 
 
@@ -37,11 +37,8 @@
 #define SNES_LATCH 8
 #define SNES_DATA  9
 
-// number of buttons (todo add to SNES library)
-#define NUM_BUTTONS 12
-
 // SNES controller object
-//SNESController snes(SNES_CLOCK, SNES_DATA, SNES_LATCH);
+SNESController snes(SNES_CLOCK, SNES_DATA, SNES_LATCH);
 
 // array of SNES buttons. array indeces correspond to gamepad buttons
 // this is also the order in which bindings are written in the text file
@@ -54,8 +51,14 @@
 // modifier keys are just weird ascii characters, as used by Keyboard.press()
 char** mappings;
 
+// the index of the current mapping in use
+unsigned int mapIndex = 0;
+
 // number of configurations
 unsigned int configCount;
+
+// macro for the current mapping being used
+#define currentMap mappings[mapIndex]
 
 // gamepad object
 //Joystick_ gamepad(JOYSTICK_DEFAULT_REPORT_ID,JOYSTICK_TYPE_GAMEPAD,
@@ -93,8 +96,17 @@ unsigned int configCount;
 
 
 /* =============================================================================
-		METHODS AND SUCH
+		MISCELLANEOUS CONFIG
    ============================================================================= */ 
+
+// the buttons to change the config
+#define UP_BTN   4
+#define DOWN_BTN 5
+
+
+/* =============================================================================
+		METHODS AND SUCH
+   ============================================================================= */
 
 /*
  * Initializes all peripherals and USB stuff
@@ -103,11 +115,13 @@ void initHardware() {
 	Serial.begin(9600); // Serial
 	while (!Serial) {}
 	SD.begin(SPI_SS);	// SD card
-//	snes.initialize();	// SNES controller
+	snes.initialize();	// SNES controller
 //	gamepad.begin();	// USB gamepad
-//	Keyboard.begin();	// keyboard
+	Keyboard.begin();	// keyboard
 //	lcd.init();			// LCD display
 //	lcd.backlight();
+	pinMode(UP_BTN, INPUT_PULLUP);
+	pinMode(DOWN_BTN, INPUT_PULLUP);
 }
 
 
@@ -126,8 +140,8 @@ void loadMappings() {
 
 	for (int i = 0; i < configCount; i++) {
 		// next lines are mappings, with nothing in between
-		mappings[i] = new char[NUM_BUTTONS];
-		configFile.read(mappings[i], NUM_BUTTONS);
+		mappings[i] = new char[SNES_NUM_BUTTONS];
+		configFile.read(mappings[i], SNES_NUM_BUTTONS);
 		skipLineEnding();
 	}
 }
@@ -135,12 +149,30 @@ void loadMappings() {
 void setup() {
 	initHardware();
 	loadMappings();
-
-	for (int i = 0; i < configCount; i++) {
-		Serial.println(mappings[i]);
-	}
 }
 
 void loop() {
-	
+	// get data from controller
+	snes.update();
+	uint16_t inputs = snes.getData();
+
+	// press/release the respective keys
+	for (int i = 0; i < SNES_NUM_BUTTONS; i++) {
+		if (inputs & (1 << i))
+			Keyboard.press(currentMap[i]);
+		else
+			Keyboard.release(currentMap[i]);		
+	}
+
+	// pool for buttons to change mapping
+	if (digitalRead(UP_BTN) == LOW) {
+		if (++mapIndex == configCount)
+			mapIndex = 0;
+	} else if (digitalRead(DOWN_BTN) == LOW) {
+		if (mapIndex-- == 0)
+			mapIndex = configCount - 1;
+	}
+
+	// wait for button to be released
+	while (digitalRead(DOWN_BTN) == LOW || digitalRead(UP_BTN) == LOW) {}
 }
