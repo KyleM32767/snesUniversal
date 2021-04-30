@@ -23,7 +23,8 @@
 #include <SPI.h>
 #include <SD.h>
 #include <Keyboard.h>
-//#include "LiquidCrystal_I2C.h"
+#include <Wire.h>
+#include "LiquidCrystal_I2C.h"
 #include "SNES.h"
 //#include "Joystick.h"
 
@@ -77,7 +78,7 @@ unsigned int configCount;
 #define SPI_SS 10
 
 // path to the config file of the SD card
-#define CONFIG_FILE_PATH "snesco~1.txt"
+#define CONFIG_FILE_PATH "SNESCO~1.txt"
 
 // macro to skip a Windows line ending
 #define skipLineEnding() char* c = new char[2]; configFile.read(c, 2); delete c;
@@ -92,7 +93,7 @@ unsigned int configCount;
 #define LCD_COLS 16
 
 // LCD display object
-//LiquidCrystal_I2C lcd(0x27, LCD_COLS, LCD_ROWS); // what is 0x27 supposed to be
+LiquidCrystal_I2C lcd(0x27, LCD_COLS, LCD_ROWS); // what is 0x27 supposed to be
 
 
 /* =============================================================================
@@ -113,13 +114,13 @@ unsigned int configCount;
  */
 void initHardware() {
 	Serial.begin(9600); // Serial
-	while (!Serial) {}
+//	while (!Serial) {}
 	SD.begin(SPI_SS);	// SD card
 	snes.initialize();	// SNES controller
 //	gamepad.begin();	// USB gamepad
 	Keyboard.begin();	// keyboard
-//	lcd.init();			// LCD display
-//	lcd.backlight();
+	lcd.init();			// LCD display
+	lcd.backlight();
 	pinMode(UP_BTN, INPUT_PULLUP);
 	pinMode(DOWN_BTN, INPUT_PULLUP);
 }
@@ -134,8 +135,8 @@ void loadMappings() {
 	File configFile = SD.open(CONFIG_FILE_PATH);
 	
 	// number of configurations is first line
-	configCount = configFile.read() - '0'; Serial.println(configCount);
-	mappings = new char*[configCount];
+	configCount = configFile.read() - '0';
+	mappings = new char*[configCount]; Serial.println(configCount);
 	skipLineEnding();
 
 	for (int i = 0; i < configCount; i++) {
@@ -146,9 +147,22 @@ void loadMappings() {
 	}
 }
 
+
+/*
+ * Updates the LCD display
+ */
+void updateLCD() {
+	// first row: config number
+	lcd.setCursor(0,0);
+	lcd.clear();
+	lcd.print("Config No. ");lcd.print(mapIndex);
+}
+
+
 void setup() {
 	initHardware();
 	loadMappings();
+	updateLCD();
 }
 
 void loop() {
@@ -168,9 +182,11 @@ void loop() {
 	if (digitalRead(UP_BTN) == LOW) {
 		if (++mapIndex == configCount)
 			mapIndex = 0;
+		updateLCD();
 	} else if (digitalRead(DOWN_BTN) == LOW) {
 		if (mapIndex-- == 0)
 			mapIndex = configCount - 1;
+		updateLCD();
 	}
 
 	// wait for button to be released
