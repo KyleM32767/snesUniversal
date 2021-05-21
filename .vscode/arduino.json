@@ -1,6 +1,0 @@
-{
-    "board": "SparkFun:avr:promicro",
-    "configuration": "cpu=8MHzatmega32U4",
-    "sketch": "snesUniversal.ino",
-    "port": "COM17"
-}
