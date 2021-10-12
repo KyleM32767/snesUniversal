@@ -53,7 +53,7 @@
 #include <Wire.h>
 #include "LiquidCrystal_I2C.h"
 #include "SNES.h"
-//#include "Joystick.h" // this isn't in yet but I might do it someday
+#include "Joystick.h" // this isn't in yet but I might do it someday
 
 
 /* =============================================================================
@@ -79,6 +79,9 @@ SNESController snes(SNES_CLOCK, SNES_DATA, SNES_LATCH);
 // modifier keys are just weird ascii characters, as used by Keyboard.press()
 unsigned char** mappings;
 
+// array of game names for display
+char** names;
+
 // the index of the current mapping in use
 unsigned int mapIndex = 0;
 
@@ -89,12 +92,12 @@ unsigned int configCount;
 #define currentMap mappings[mapIndex]
 
 // gamepad object
-//Joystick_ gamepad(JOYSTICK_DEFAULT_REPORT_ID,JOYSTICK_TYPE_GAMEPAD,
-//  12, 0,                 // Button Count, Hat Switch Count
-//  false, false, false,   // no X, Y, or Z axis
-//  false, false, false,   // No Rx, Ry, or Rz
-//  false, false,          // No rudder or throttle
-//  false, false, false);  // No accelerator, brake, or steering
+Joystick_ gamepad(0x03,JOYSTICK_TYPE_GAMEPAD,
+					12, 0,                 // Button Count, Hat Switch Count
+					false, false, false,   // no X, Y, or Z axis
+					false, false, false,   // No Rx, Ry, or Rz
+					false, false,          // No rudder or throttle
+					false, false, false);  // No accelerator, brake, or steering
 
 
 /* =============================================================================
@@ -106,9 +109,10 @@ unsigned int configCount;
 
 // path to the config file of the SD card
 #define CONFIG_FILE_PATH "SNESCO~1.txt"
+#define NAME_FILE_PATH   "names.txt"
 
 // macro to skip a Windows line ending
-#define skipLineEnding() char* c = new char[2]; configFile.read(c, 2); delete c;
+#define skipLineEnding(f) {char* c = new char[2]; f.read(c, 2); delete c;}
 
 
 /* =============================================================================
@@ -141,10 +145,10 @@ LiquidCrystal_I2C lcd(0x27, LCD_COLS, LCD_ROWS); // what is 0x27 supposed to be
  */
 void initHardware() {
 	Serial.begin(9600); // Serial
-//	while (!Serial) {}
+	//while (!Serial) {}
 	SD.begin(SPI_SS);	// SD card
 	snes.initialize();	// SNES controller
-//	gamepad.begin();	// USB gamepad
+	gamepad.begin();	// HID gamepad
 	Keyboard.begin();	// keyboard
 	lcd.init();			// LCD display
 	lcd.backlight();
@@ -160,18 +164,29 @@ void loadMappings() {
 	
 	// open config file
 	File configFile = SD.open(CONFIG_FILE_PATH);
+	File nameFile = SD.open(NAME_FILE_PATH);
 	
 	// number of configurations is first line
 	configCount = configFile.read() - '0';
-	mappings = new char*[configCount]; Serial.println(configCount);
-	skipLineEnding();
+	mappings = new char*[configCount];
+	names = new char*[configCount + 1];
+	skipLineEnding(configFile);
 
 	for (int i = 0; i < configCount; i++) {
+
 		// next lines are mappings, with nothing in between
 		mappings[i] = new char[SNES_NUM_BUTTONS];
+
+		// corresponding name is on line of name file
+		names[i] = new char[LCD_COLS];
+		
 		configFile.read(mappings[i], SNES_NUM_BUTTONS);
-		skipLineEnding();
+		nameFile.read(names[i], LCD_COLS);
+		skipLineEnding(configFile);
+		skipLineEnding(nameFile);
 	}
+
+	names[configCount] = "USB Gamepad";
 }
 
 
@@ -182,7 +197,20 @@ void updateLCD() {
 	// first row: config number
 	lcd.setCursor(0,0);
 	lcd.clear();
-	lcd.print("Config No. ");lcd.print(mapIndex);
+	lcd.print("Config No. ");
+	lcd.print(mapIndex);
+
+	// second row: name
+	lcd.setCursor(0,1);
+	lcd.print(names[mapIndex]);
+}
+
+
+void setButton(int btn, bool state) {
+	if (mapIndex == configCount)
+		gamepad.setButton(btn, state);
+	else if (currentMap[btn] != '~') // tilde signifies no mapping
+		state ? Keyboard.press(currentMap[btn]) : Keyboard.release(currentMap[btn]);
 }
 
 
@@ -199,23 +227,17 @@ void loop() {
 
 	// press/release the respective keys
 	for (int i = 0; i < SNES_NUM_BUTTONS; i++) {
-		// capital X signifies no mapping
-		if (currentMap[i] != '~') {
-			if (inputs & (1 << i))
-				Keyboard.press(currentMap[i]);
-			else
-				Keyboard.release(currentMap[i]);
-		}		
+		setButton(i, inputs & (1 << i));
 	}
 
 	// pool for buttons to change mapping
 	if (digitalRead(UP_BTN) == LOW) {
-		if (++mapIndex == configCount)
+		if (++mapIndex == configCount + 1)
 			mapIndex = 0;
 		updateLCD();
 	} else if (digitalRead(DOWN_BTN) == LOW) {
 		if (mapIndex-- == 0)
-			mapIndex = configCount - 1;
+			mapIndex = configCount;
 		updateLCD();
 	}
 
