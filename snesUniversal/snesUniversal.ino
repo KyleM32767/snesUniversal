@@ -116,6 +116,36 @@ Joystick_ gamepad(0x03,JOYSTICK_TYPE_GAMEPAD,
 
 
 /* =============================================================================
+		SPECIAL KEYS MAPPING
+   ============================================================================= */ 
+
+// special keys are hard to type in the text files, so use these characters instead
+#define CHAR_F1        '!'
+#define CHAR_F2        '@'
+#define CHAR_F3        '#'
+#define CHAR_F4        '$'
+#define CHAR_F5        '%'
+#define CHAR_F6        '^'
+#define CHAR_F7        '&'
+#define CHAR_F8        '*'
+#define CHAR_F9        '('
+#define CHAR_F10       ')'
+#define CHAR_F11       '_'
+#define CHAR_F12       '+'
+#define CHAR_ESC       'E'
+#define CHAR_SHIFT     'S'
+#define CHAR_CTRL      'C'
+#define CHAR_ALT       'A'
+#define CHAR_TAB       'T'
+#define CHAR_ENTER     'N'
+#define CHAR_BACKSPACE 'B'
+#define CHAR_UP        'U'
+#define CHAR_DOWN      'D'
+#define CHAR_LEFT      'L'
+#define CHAR_RIGHT     'R'
+
+
+/* =============================================================================
 		DISPLAY CONFIG
    ============================================================================= */ 
 
@@ -180,8 +210,12 @@ void loadMappings() {
 		// corresponding name is on line of name file
 		names[i] = new char[LCD_COLS];
 		
+		// read lines from config/name file and set mappings
 		configFile.read(mappings[i], SNES_NUM_BUTTONS);
 		nameFile.read(names[i], LCD_COLS);
+		convertSpecialKeys(mappings[i]);
+		
+		// skip line endings
 		skipLineEnding(configFile);
 		skipLineEnding(nameFile);
 	}
@@ -206,11 +240,121 @@ void updateLCD() {
 }
 
 
+/* 
+ * Sets a button to the given state
+ * 
+ * args:
+ *   btn   = index of button (0-SNES_NUM_BUTTONS)
+ *   state = true if button is pressed, false otherwise
+ */
 void setButton(int btn, bool state) {
 	if (mapIndex == configCount)
 		gamepad.setButton(btn, state);
 	else if (currentMap[btn] != '~') // tilde signifies no mapping
 		state ? Keyboard.press(currentMap[btn]) : Keyboard.release(currentMap[btn]);
+}
+
+
+void convertSpecialKeys(char* mappings) {
+
+	// parse through mappings with a giant switch statement
+	for (int i = 0; i < SNES_NUM_BUTTONS; i++){
+		switch (mappings[i]) {
+		
+		case CHAR_ALT:
+			mappings[i] = KEY_LEFT_ALT;
+			break;
+		
+		case CHAR_BACKSPACE:
+			mappings[i] = KEY_BACKSPACE;
+			break;
+		
+		case CHAR_CTRL:
+			mappings[i] = KEY_LEFT_CTRL;
+			break;
+		
+		case CHAR_ENTER:
+			mappings[i] = KEY_RETURN;
+			break;
+		
+		case CHAR_ESC:
+			mappings[i] = KEY_ESC;
+			break;
+		
+		case CHAR_SHIFT:
+			mappings[i] = KEY_LEFT_SHIFT;
+			break;
+		
+		case CHAR_TAB:
+			mappings[i] = KEY_TAB;
+			break;
+		
+		case CHAR_UP:
+			mappings[i] = KEY_UP_ARROW;
+			break;
+		
+		case CHAR_DOWN:
+			mappings[i] = KEY_DOWN_ARROW;
+			break;
+		
+		case CHAR_LEFT:
+			mappings[i] = KEY_LEFT_ARROW;
+			break;
+		
+		case CHAR_RIGHT:
+			mappings[i] = KEY_RIGHT_ARROW;
+			break;
+		
+		case CHAR_F1:
+			mappings[i] = KEY_F1;
+			break;
+		
+		case CHAR_F2:
+			mappings[i] = KEY_F2;
+			break;
+		
+		case CHAR_F3:
+			mappings[i] = KEY_F3;
+			break;
+		
+		case CHAR_F4:
+			mappings[i] = KEY_F4;
+			break;
+		
+		case CHAR_F5:
+			mappings[i] = KEY_F5;
+			break;
+		
+		case CHAR_F6:
+			mappings[i] = KEY_F6;
+			break;
+		
+		case CHAR_F7:
+			mappings[i] = KEY_F7;
+			break;
+		
+		case CHAR_F8:
+			mappings[i] = KEY_F8;
+			break;
+		
+		case CHAR_F9:
+			mappings[i] = KEY_F9;
+			break;
+		
+		case CHAR_F10:
+			mappings[i] = KEY_F10;
+			break;
+		
+		case CHAR_F11:
+			mappings[i] = KEY_F11;
+			break;
+		
+		case CHAR_F12:
+			mappings[i] = KEY_F12;
+			break;
+		}
+	}
+
 }
 
 

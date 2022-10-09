@@ -25,8 +25,7 @@ A universal adapter to play modern PC games with a SNES controller. Mappings are
 
 ```
 2
-by³±ÚÙØ×axlr
-z~~±ÚÙØ×~°~~
+todo update
 ```
 
 ## Hardware Used
